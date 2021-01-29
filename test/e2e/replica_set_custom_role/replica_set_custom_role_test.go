@@ -9,11 +9,10 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	e2eutil.TestMainEntry(m)
 }
 
 func TestReplicaSetCustomRole(t *testing.T) {

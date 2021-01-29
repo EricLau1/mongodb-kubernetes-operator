@@ -9,11 +9,10 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	e2eutil.TestMainEntry(m)
 }
 
 func TestReplicaSetScaleUp(t *testing.T) {

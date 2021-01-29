@@ -3,9 +3,9 @@ package mongodb
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"reflect"
 	"testing"
 	"time"
@@ -21,6 +21,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
@@ -656,7 +657,7 @@ func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.Mon
 
 // loadTestFixture will create a MongoDB resource from a given fixture
 func loadTestFixture(yamlFileName string) (mdbv1.MongoDBCommunity, error) {
-	testPath := fmt.Sprintf("testdata/%s", yamlFileName)
+	testPath := path.Join(e2eutil.TestdataDir, yamlFileName)
 	mdb := mdbv1.MongoDBCommunity{}
 	data, err := ioutil.ReadFile(testPath)
 	if err != nil {

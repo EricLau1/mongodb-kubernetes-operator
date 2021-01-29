@@ -9,12 +9,11 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	e2eutil.TestMainEntry(m)
 }
 
 func TestStatefulSetArbitraryConfig(t *testing.T) {

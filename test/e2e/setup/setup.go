@@ -23,26 +23,18 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const (
-	performCleanup = "PERFORM_CLEANUP"
-	deployDir      = "deploy"
-)
+const performCleanup = "PERFORM_CLEANUP"
 
-func InitTest(t *testing.T) (*f.Context, bool) {
+func InitTest(t *testing.T) (*e2eutil.Context, bool) {
+	ctx := e2eutil.NewContext(t)
 
-	ctx := f.NewContext(t)
-	if err := registerTypesWithFramework(&mdbv1.MongoDBCommunity{}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := deployOperator(f.Global.Client); err != nil {
+	if err := deployOperator(e2eutil.TestClient); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,23 +43,13 @@ func InitTest(t *testing.T) (*f.Context, bool) {
 	return ctx, clean == "True"
 }
 
-func registerTypesWithFramework(newTypes ...runtime.Object) error {
-
-	for _, newType := range newTypes {
-		if err := f.AddToFrameworkScheme(apis.AddToScheme, newType); err != nil {
-			return errors.Errorf("failed to add custom resource type %s to framework scheme: %s", newType.GetObjectKind(), err)
-		}
-	}
-	return nil
-}
-
 // CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
 // The certificates and keys are stored in testdata/tls
-func CreateTLSResources(namespace string, ctx *f.TestCtx) error { //nolint
+func CreateTLSResources(namespace string, ctx *e2eutil.Context) error { //nolint
 	tlsConfig := e2eutil.NewTestTLSConfig(false)
 
 	// Create CA ConfigMap
-	ca, err := ioutil.ReadFile("testdata/tls/ca.crt")
+	ca, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "ca.crt"))
 	if err != nil {
 		return nil
 	}
@@ -78,17 +60,17 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error { //nolint
 		SetField("ca.crt", string(ca)).
 		Build()
 
-	err = f.Global.Client.Create(context.TODO(), &caConfigMap, &f.CleanupOptions{TestContext: ctx})
+	err = e2eutil.TestClient.Create(context.TODO(), &caConfigMap, &e2eutil.CleanupOptions{TestContext: ctx})
 	if err != nil {
 		return err
 	}
 
 	// Create server key and certificate secret
-	cert, err := ioutil.ReadFile("testdata/tls/server.crt")
+	cert, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "server.crt"))
 	if err != nil {
 		return err
 	}
-	key, err := ioutil.ReadFile("testdata/tls/server.key")
+	key, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "server.key"))
 	if err != nil {
 		return err
 	}
@@ -100,11 +82,11 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error { //nolint
 		SetField("tls.key", string(key)).
 		Build()
 
-	return f.Global.Client.Create(context.TODO(), &certKeySecret, &f.CleanupOptions{TestContext: ctx})
+	return e2eutil.TestClient.Create(context.TODO(), &certKeySecret, &e2eutil.CleanupOptions{TestContext: ctx})
 }
 
 // GeneratePasswordForUser will create a secret with a password for the given user
-func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context, namespace string) (string, error) {
+func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *e2eutil.Context, namespace string) (string, error) {
 	passwordKey := mdbu.PasswordSecretRef.Key
 	if passwordKey == "" {
 		passwordKey = "password"
@@ -117,7 +99,7 @@ func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context, namespace s
 
 	nsp := namespace
 	if nsp == "" {
-		nsp = f.Global.OperatorNamespace
+		nsp = e2eutil.OperatorNamespace
 	}
 
 	passwordSecret := secret.Builder().
@@ -126,37 +108,40 @@ func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context, namespace s
 		SetField(passwordKey, password).
 		Build()
 
-	return password, f.Global.Client.Create(context.TODO(), &passwordSecret, &f.CleanupOptions{TestContext: ctx})
+	return password, e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
 }
 
-func deployOperator(c f.FrameworkClient) error {
+func deployOperator(c client.Client) error {
 	testConfig := loadTestConfigFromEnv()
+	e2eutil.OperatorNamespace = testConfig.namespace
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role")
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator service account: %s", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
-	watchNamespace := testConfig.namespace
 	if testConfig.clusterWide {
-		watchNamespace = "*"
+		e2eutil.WatchNamespace = "*"
+	} else {
+		e2eutil.WatchNamespace = testConfig.namespace
 	}
-	fmt.Println("Successfully created the operator Role Binding")
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "operator.yaml"),
+	e2eutil.OperatorNamespace = testConfig.namespace
+	fmt.Printf("Setting namespace to watch to %s\n", e2eutil.WatchNamespace)
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "operator.yaml"),
 		&appsv1.Deployment{},
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
 		withVersionUpgradeHookImage(testConfig.versionUpgradeHookImage),
-		withEnvVar("WATCH_NAMESPACE", watchNamespace),
+		withEnvVar("WATCH_NAMESPACE", e2eutil.WatchNamespace),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
@@ -166,7 +151,7 @@ func deployOperator(c f.FrameworkClient) error {
 
 // buildKubernetesResourceFromYamlFile will create the kubernetes resource defined in yamlFilePath. All of the functional options
 // provided will be applied before creation.
-func buildKubernetesResourceFromYamlFile(c f.FrameworkClient, yamlFilePath string, obj runtime.Object, options ...func(obj runtime.Object)) error {
+func buildKubernetesResourceFromYamlFile(c client.Client, yamlFilePath string, obj runtime.Object, options ...func(obj runtime.Object)) error {
 	data, err := ioutil.ReadFile(yamlFilePath)
 	if err != nil {
 		return errors.Errorf("error reading file: %s", err)
@@ -193,8 +178,8 @@ func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
 	return json.Unmarshal(jsonBytes, &obj)
 }
 
-func createOrUpdate(c f.FrameworkClient, obj runtime.Object) error {
-	if err := c.Create(context.TODO(), obj, &f.CleanupOptions{}); err != nil {
+func createOrUpdate(c client.Client, obj runtime.Object) error {
+	if err := c.Create(context.TODO(), obj, &e2eutil.CleanupOptions{}); err != nil {
 		if apiErrors.IsAlreadyExists(err) {
 			return c.Update(context.TODO(), obj)
 		}
