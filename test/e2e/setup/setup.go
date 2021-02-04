@@ -123,7 +123,7 @@ func deployOperator(c client.Client) error {
 	}
 	fmt.Printf("Setting namespace to watch to %s\n", e2eutil.WatchNamespace)
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role.yaml"), &rbacv1.ClusterRole{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role")
@@ -133,7 +133,7 @@ func deployOperator(c client.Client) error {
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role_binding.yaml"), &rbacv1.ClusterRoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
