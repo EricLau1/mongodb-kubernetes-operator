@@ -113,7 +113,15 @@ func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *e2eutil.Context, names
 
 func deployOperator(c client.Client) error {
 	testConfig := loadTestConfigFromEnv()
+
 	e2eutil.OperatorNamespace = testConfig.namespace
+	fmt.Printf("Setting operator namespace to %s\n", e2eutil.OperatorNamespace)
+	if testConfig.clusterWide {
+		e2eutil.WatchNamespace = "*"
+	} else {
+		e2eutil.WatchNamespace = testConfig.namespace
+	}
+	fmt.Printf("Setting namespace to watch to %s\n", e2eutil.WatchNamespace)
 
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role: %s", err)
@@ -129,13 +137,6 @@ func deployOperator(c client.Client) error {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
-	if testConfig.clusterWide {
-		e2eutil.WatchNamespace = "*"
-	} else {
-		e2eutil.WatchNamespace = testConfig.namespace
-	}
-	e2eutil.OperatorNamespace = testConfig.namespace
-	fmt.Printf("Setting namespace to watch to %s\n", e2eutil.WatchNamespace)
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "operator.yaml"),
 		&appsv1.Deployment{},
 		withNamespace(testConfig.namespace),
