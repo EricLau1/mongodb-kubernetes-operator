@@ -23,7 +23,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,7 +36,7 @@ const (
 func InitTest(t *testing.T) (*e2eutil.Context, bool) {
 	ctx := e2eutil.NewContext(t)
 
-	if err := deployOperator(e2eutil.TestClient); err != nil {
+	if err := deployOperator(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -114,7 +113,7 @@ func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *e2eutil.Context, names
 	return password, e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
 }
 
-func deployOperator(c client.Client) error {
+func deployOperator() error {
 	testConfig := loadTestConfigFromEnv()
 
 	e2eutil.OperatorNamespace = testConfig.namespace
@@ -125,21 +124,21 @@ func deployOperator(c client.Client) error {
 	}
 	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator cluster role: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role")
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator service account: %s", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator cluster role binding: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "operator.yaml"),
+	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "operator.yaml"),
 		&appsv1.Deployment{},
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
@@ -154,7 +153,7 @@ func deployOperator(c client.Client) error {
 
 // buildKubernetesResourceFromYamlFile will create the kubernetes resource defined in yamlFilePath. All of the functional options
 // provided will be applied before creation.
-func buildKubernetesResourceFromYamlFile(c client.Client, yamlFilePath string, obj runtime.Object, options ...func(obj runtime.Object)) error {
+func buildKubernetesResourceFromYamlFile(yamlFilePath string, obj runtime.Object, options ...func(obj runtime.Object)) error {
 	data, err := ioutil.ReadFile(yamlFilePath)
 	if err != nil {
 		return errors.Errorf("error reading file: %s", err)
@@ -168,7 +167,7 @@ func buildKubernetesResourceFromYamlFile(c client.Client, yamlFilePath string, o
 		opt(obj)
 	}
 
-	return createOrUpdate(c, obj)
+	return createOrUpdate(obj)
 }
 
 // marshalRuntimeObjectFromYAMLBytes accepts the bytes of a yaml resource
@@ -181,10 +180,10 @@ func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
 	return json.Unmarshal(jsonBytes, &obj)
 }
 
-func createOrUpdate(c client.Client, obj runtime.Object) error {
-	if err := c.Create(context.TODO(), obj, &e2eutil.CleanupOptions{}); err != nil {
+func createOrUpdate(obj runtime.Object) error {
+	if err := e2eutil.TestClient.Create(context.TODO(), obj, &e2eutil.CleanupOptions{}); err != nil {
 		if apiErrors.IsAlreadyExists(err) {
-			return c.Update(context.TODO(), obj)
+			return e2eutil.TestClient.Update(context.TODO(), obj)
 		}
 		return errors.Errorf("error creating %s in kubernetes: %s", obj.GetObjectKind(), err)
 	}

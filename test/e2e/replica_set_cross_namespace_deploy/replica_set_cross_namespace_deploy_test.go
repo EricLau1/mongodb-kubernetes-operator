@@ -81,7 +81,7 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		},
 		{
 			APIGroups: []string{"mongodb.com"},
-			Resources: []string{"*", "mongodbs"},
+			Resources: []string{"mongodbcommunity", "mongodbcommunity/status", "mongodbcommunity/spec"},
 			Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 		},
 	})
@@ -137,7 +137,7 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		},
 		{
 			APIGroups: []string{"mongodb.com"},
-			Resources: []string{"*", "mongodbs"},
+			Resources: []string{"mongodbcommunity", "mongodbcommunity/status", "mongodbcommunity/spec"},
 			Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 		},
 	})
