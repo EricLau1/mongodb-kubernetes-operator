@@ -29,7 +29,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const performCleanup = "PERFORM_CLEANUP"
+const (
+	performCleanup = "PERFORM_CLEANUP"
+	deployDir      = "/go/deploy"
+)
 
 func InitTest(t *testing.T) (*e2eutil.Context, bool) {
 	ctx := e2eutil.NewContext(t)
@@ -116,33 +119,32 @@ func deployOperator(c client.Client) error {
 
 	e2eutil.OperatorNamespace = testConfig.namespace
 	fmt.Printf("Setting operator namespace to %s\n", e2eutil.OperatorNamespace)
+	watchNamespace := testConfig.namespace
 	if testConfig.clusterWide {
-		e2eutil.WatchNamespace = "*"
-	} else {
-		e2eutil.WatchNamespace = testConfig.namespace
+		watchNamespace = "*"
 	}
-	fmt.Printf("Setting namespace to watch to %s\n", e2eutil.WatchNamespace)
+	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role.yaml"), &rbacv1.ClusterRole{}, withNamespace(testConfig.namespace)); err != nil {
-		return errors.Errorf("error building operator role: %s", err)
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+		return errors.Errorf("error building operator cluster role: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role")
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator service account: %s", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "role_binding.yaml"), &rbacv1.ClusterRoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
-		return errors.Errorf("error building operator role binding: %s", err)
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+		return errors.Errorf("error building operator cluster role binding: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(e2eutil.DeployDir, "operator.yaml"),
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(deployDir, "operator.yaml"),
 		&appsv1.Deployment{},
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
 		withVersionUpgradeHookImage(testConfig.versionUpgradeHookImage),
-		withEnvVar("WATCH_NAMESPACE", e2eutil.WatchNamespace),
+		withEnvVar("WATCH_NAMESPACE", watchNamespace),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}

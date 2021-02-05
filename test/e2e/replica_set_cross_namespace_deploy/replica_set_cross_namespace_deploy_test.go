@@ -2,6 +2,7 @@ package replica_set_cross_namespace_deploy
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
@@ -15,7 +16,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	e2eutil.TestMainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestCrossNamespaceDeploy(t *testing.T) {

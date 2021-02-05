@@ -2,7 +2,6 @@ package e2eutil
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"k8s.io/client-go/deprecated/scheme"
@@ -15,7 +14,6 @@ import (
 
 var TestClient client.Client
 var OperatorNamespace string
-var WatchNamespace string
 
 type CleanupOptions struct {
 	TestContext *Context
@@ -25,7 +23,7 @@ func (*CleanupOptions) ApplyToCreate(*client.CreateOptions) {}
 
 type Context struct{}
 
-func TestMainEntry(m *testing.M) {
+func RunTest(m *testing.M) (int, error) {
 	var cfg *rest.Config
 	var testEnv *envtest.Environment
 	var err error
@@ -40,20 +38,17 @@ func TestMainEntry(m *testing.M) {
 	fmt.Println("Starting test environment")
 	cfg, err = testEnv.Start()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return 1, err
 	}
 
 	err = mdbv1.AddToScheme(scheme.Scheme)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return 1, err
 	}
 
 	TestClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return 1, err
 	}
 
 	fmt.Println("Starting test")
@@ -61,10 +56,10 @@ func TestMainEntry(m *testing.M) {
 
 	err = testEnv.Stop()
 	if err != nil {
-		fmt.Println(err)
+		return code, err
 	}
 
-	os.Exit(code)
+	return code, nil
 }
 
 func NewContext(t *testing.T) *Context {

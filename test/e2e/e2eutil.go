@@ -23,10 +23,7 @@ import (
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	DeployDir   = "/go/deploy"
-	TestdataDir = "/go/testdata/tls"
-)
+const TestdataDir = "/go/testdata/tls"
 
 // UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
 // and retries when there are conflicts

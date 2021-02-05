@@ -1,6 +1,8 @@
 package replica_set_tls
 
 import (
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -13,7 +15,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	e2eutil.TestMainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestReplicaSetTLSRotate(t *testing.T) {

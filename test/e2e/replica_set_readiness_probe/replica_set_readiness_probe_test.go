@@ -2,7 +2,9 @@ package replica_set_readiness_probe
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -15,7 +17,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	e2eutil.TestMainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestReplicaSetReadinessProbeScaling(t *testing.T) {
